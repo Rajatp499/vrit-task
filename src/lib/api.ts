@@ -1,0 +1,40 @@
+// import { clearAuth, getToken } from '@/lib/auth';
+
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://fakestoreapi.noksha.dev/api';
+
+async function req<T>(path: string, options?: any): Promise<T> {
+  const isBrowser = typeof window !== "undefined";
+
+  const token = isBrowser ? localStorage.getItem("AuthToken") : null;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE}${path}`, {
+    headers,
+    ...options,
+  });
+
+  if (res.status === 401) {
+    if (!isBrowser) return Promise.reject(new Error("Session expired"));
+    localStorage.removeItem("token");
+    window.location.href = "/login";
+  }
+
+  if (!res.ok) {
+    throw new Error(`API error ${res.status}`);
+  }
+  return res.json();
+}
+
+export const api = {
+  get: <T>(path: string) => req<T>(path),
+  post: <T>(path: string, body: unknown) =>
+    req<T>(path, { method: "POST", body: JSON.stringify(body) }),
+  put: <T>(path: string, body: unknown) =>
+    req<T>(path, { method: "PUT", body: JSON.stringify(body) }),
+  patch: <T>(path: string, body: unknown) =>
+    req<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
+  delete: <T>(path: string) => req<T>(path, { method: "DELETE" }),
+};
